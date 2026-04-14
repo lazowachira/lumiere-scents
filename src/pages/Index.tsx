@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles, Star } from "lucide-react";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
 
 const HomePage = () => {
+  const { data: products = [], isLoading } = useProducts();
   const featured = products.filter((p) => p.isFeatured);
   const bestSellers = products.filter((p) => p.isBestSeller);
   const newArrivals = products.filter((p) => p.isNewArrival);
@@ -47,22 +48,24 @@ const HomePage = () => {
       </section>
 
       {/* Featured */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="flex items-center justify-between mb-10">
-          <div>
-            <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">Curated Selection</p>
-            <h2 className="font-heading text-3xl md:text-4xl">Featured</h2>
+      {featured.length > 0 && (
+        <section className="container mx-auto px-4 py-20">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">Curated Selection</p>
+              <h2 className="font-heading text-3xl md:text-4xl">Featured</h2>
+            </div>
+            <Link to="/products" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+              View All <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <Link to="/products" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
-            View All <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {featured.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {featured.map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Banner */}
       <section className="container mx-auto px-4">
@@ -88,34 +91,38 @@ const HomePage = () => {
       </section>
 
       {/* Best Sellers */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="flex items-center justify-between mb-10">
-          <div>
-            <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">Most Loved</p>
-            <h2 className="font-heading text-3xl md:text-4xl">Best Sellers</h2>
+      {bestSellers.length > 0 && (
+        <section className="container mx-auto px-4 py-20">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">Most Loved</p>
+              <h2 className="font-heading text-3xl md:text-4xl">Best Sellers</h2>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-          {bestSellers.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {bestSellers.map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* New Arrivals */}
-      <section className="container mx-auto px-4 pb-20">
-        <div className="flex items-center justify-between mb-10">
-          <div>
-            <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">Just In</p>
-            <h2 className="font-heading text-3xl md:text-4xl">New Arrivals</h2>
+      {newArrivals.length > 0 && (
+        <section className="container mx-auto px-4 pb-20">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">Just In</p>
+              <h2 className="font-heading text-3xl md:text-4xl">New Arrivals</h2>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-          {newArrivals.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {newArrivals.map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Testimonial */}
       <section className="container mx-auto px-4 pb-20 text-center">
@@ -129,6 +136,12 @@ const HomePage = () => {
           <p className="text-sm text-muted-foreground">— Sophia M., Verified Buyer</p>
         </div>
       </section>
+
+      {isLoading && (
+        <div className="fixed inset-0 bg-background/50 flex items-center justify-center z-50 pointer-events-none">
+          <div className="animate-pulse text-primary font-heading text-xl">Loading...</div>
+        </div>
+      )}
     </div>
   );
 };

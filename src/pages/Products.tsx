@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { products, brands, scentFamilies, categories } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import ProductCard from "@/components/product/ProductCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ProductsPage = () => {
+  const { data: products = [], isLoading } = useProducts();
   const [search, setSearch] = useState("");
   const [gender, setGender] = useState("all");
   const [category, setCategory] = useState("all");
@@ -13,6 +14,10 @@ const ProductsPage = () => {
   const [brand, setBrand] = useState("all");
   const [sort, setSort] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
+
+  const brands = useMemo(() => [...new Set(products.map(p => p.brand))], [products]);
+  const scentFamilies = useMemo(() => [...new Set(products.map(p => p.scentFamily).filter(Boolean))], [products]);
+  const categories = useMemo(() => [...new Set(products.map(p => p.category))], [products]);
 
   const filtered = useMemo(() => {
     let result = products.filter((p) => {
@@ -31,7 +36,7 @@ const ProductsPage = () => {
       case "newest": result.sort((a, b) => (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0)); break;
     }
     return result;
-  }, [search, gender, category, scent, brand, sort]);
+  }, [products, search, gender, category, scent, brand, sort]);
 
   return (
     <div className="min-h-screen pt-24 pb-20">
@@ -41,7 +46,6 @@ const ProductsPage = () => {
           <h1 className="font-heading text-4xl md:text-5xl">Fragrances</h1>
         </div>
 
-        {/* Search & Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -97,13 +101,21 @@ const ProductsPage = () => {
 
         <p className="text-sm text-muted-foreground mb-6">{filtered.length} fragrances</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {filtered.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="bg-surface rounded-lg aspect-[3/4] animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {filtered.map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
+          </div>
+        )}
 
-        {filtered.length === 0 && (
+        {!isLoading && filtered.length === 0 && (
           <div className="text-center py-20">
             <p className="text-muted-foreground">No fragrances match your filters.</p>
           </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sparkles, ArrowRight, RotateCcw } from "lucide-react";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/types/product";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ const occasionOptions = ["casual", "date night", "office", "evening", "special e
 const personalityOptions = ["bold", "calm", "romantic", "energetic", "mysterious", "elegant"];
 
 const Recommendations = () => {
+  const { data: products = [] } = useProducts();
   const [step, setStep] = useState(0);
   const [scents, setScents] = useState<string[]>([]);
   const [occasions, setOccasions] = useState<string[]>([]);
@@ -36,13 +37,7 @@ const Recommendations = () => {
     setStep(3);
   };
 
-  const reset = () => {
-    setStep(0);
-    setScents([]);
-    setOccasions([]);
-    setPersonalities([]);
-    setResults(null);
-  };
+  const reset = () => { setStep(0); setScents([]); setOccasions([]); setPersonalities([]); setResults(null); };
 
   const ChipSelect = ({ options, selected, onToggle }: { options: string[]; selected: string[]; onToggle: (v: string) => void }) => (
     <div className="flex flex-wrap gap-3">
