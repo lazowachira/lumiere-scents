@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
-import { ShoppingBag, Heart, Search, Menu, X } from "lucide-react";
+import { ShoppingBag, Heart, Search, Menu, X, User, LogOut, Shield } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 
 const Navbar = () => {
   const itemCount = useCartStore((s) => s.itemCount());
   const toggleCart = useCartStore((s) => s.toggleCart);
+  const { user, isAdmin, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -19,6 +21,11 @@ const Navbar = () => {
           <Link to="/" className="text-sm tracking-wide text-muted-foreground hover:text-foreground transition-colors">Home</Link>
           <Link to="/products" className="text-sm tracking-wide text-muted-foreground hover:text-foreground transition-colors">Collection</Link>
           <Link to="/recommendations" className="text-sm tracking-wide text-muted-foreground hover:text-foreground transition-colors">Find Your Scent</Link>
+          {isAdmin && (
+            <Link to="/admin" className="text-sm tracking-wide text-primary hover:text-foreground transition-colors flex items-center gap-1">
+              <Shield className="w-3 h-3" /> Admin
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
@@ -36,6 +43,20 @@ const Navbar = () => {
               </span>
             )}
           </button>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <Link to="/orders" className="text-muted-foreground hover:text-foreground transition-colors">
+                <User className="w-5 h-5" />
+              </Link>
+              <button onClick={signOut} className="text-muted-foreground hover:text-foreground transition-colors">
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <Link to="/auth" className="text-sm text-primary hover:text-foreground transition-colors hidden md:block">
+              Sign In
+            </Link>
+          )}
           <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-muted-foreground">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -47,6 +68,15 @@ const Navbar = () => {
           <Link to="/" onClick={() => setMobileOpen(false)} className="block text-sm tracking-wide text-muted-foreground hover:text-foreground">Home</Link>
           <Link to="/products" onClick={() => setMobileOpen(false)} className="block text-sm tracking-wide text-muted-foreground hover:text-foreground">Collection</Link>
           <Link to="/recommendations" onClick={() => setMobileOpen(false)} className="block text-sm tracking-wide text-muted-foreground hover:text-foreground">Find Your Scent</Link>
+          {user ? (
+            <>
+              <Link to="/orders" onClick={() => setMobileOpen(false)} className="block text-sm tracking-wide text-muted-foreground hover:text-foreground">My Orders</Link>
+              {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="block text-sm tracking-wide text-primary hover:text-foreground">Admin Dashboard</Link>}
+              <button onClick={() => { signOut(); setMobileOpen(false); }} className="block text-sm tracking-wide text-muted-foreground hover:text-foreground">Sign Out</button>
+            </>
+          ) : (
+            <Link to="/auth" onClick={() => setMobileOpen(false)} className="block text-sm tracking-wide text-primary hover:text-foreground">Sign In</Link>
+          )}
         </div>
       )}
     </nav>

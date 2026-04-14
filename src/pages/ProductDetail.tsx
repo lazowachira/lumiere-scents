@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingBag, Star, Clock, Wind } from "lucide-react";
-import { products } from "@/data/products";
+import { useProduct, useProducts } from "@/hooks/useProducts";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,20 @@ import ProductCard from "@/components/product/ProductCard";
 
 const ProductDetail = () => {
   const { id } = useParams();
-  const product = products.find((p) => p.id === id);
+  const { data: product, isLoading } = useProduct(id);
+  const { data: allProducts = [] } = useProducts();
   const addItem = useCartStore((s) => s.addItem);
   const setCartOpen = useCartStore((s) => s.setOpen);
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const isWished = useWishlistStore((s) => s.ids.includes(id || ""));
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen pt-24 flex items-center justify-center">
+        <div className="animate-pulse text-primary font-heading text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -22,7 +31,9 @@ const ProductDetail = () => {
     );
   }
 
-  const related = products.filter((p) => p.id !== product.id && (p.scentFamily === product.scentFamily || p.gender === product.gender)).slice(0, 4);
+  const related = allProducts
+    .filter((p) => p.id !== product.id && (p.scentFamily === product.scentFamily || p.gender === product.gender))
+    .slice(0, 4);
 
   const handleAddToCart = () => {
     addItem(product);
@@ -37,12 +48,10 @@ const ProductDetail = () => {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-          {/* Image */}
           <div className="relative rounded-2xl overflow-hidden bg-surface aspect-[3/4] animate-fade-in">
             <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
           </div>
 
-          {/* Details */}
           <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
             <p className="text-xs tracking-[0.2em] uppercase text-primary mb-2">{product.brand}</p>
             <h1 className="font-heading text-4xl md:text-5xl mb-2">{product.name}</h1>
@@ -64,32 +73,24 @@ const ProductDetail = () => {
 
             <p className="text-sm text-muted-foreground leading-relaxed mb-8">{product.description}</p>
 
-            {/* Notes */}
             <div className="space-y-4 mb-8">
               <h3 className="text-sm font-semibold tracking-wider uppercase">Fragrance Notes</h3>
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-surface rounded-lg p-4">
-                  <p className="text-[10px] tracking-wider uppercase text-primary mb-2">Top</p>
-                  {product.notesTop.map((n) => (
-                    <p key={n} className="text-xs text-muted-foreground">{n}</p>
-                  ))}
-                </div>
-                <div className="bg-surface rounded-lg p-4">
-                  <p className="text-[10px] tracking-wider uppercase text-primary mb-2">Heart</p>
-                  {product.notesMiddle.map((n) => (
-                    <p key={n} className="text-xs text-muted-foreground">{n}</p>
-                  ))}
-                </div>
-                <div className="bg-surface rounded-lg p-4">
-                  <p className="text-[10px] tracking-wider uppercase text-primary mb-2">Base</p>
-                  {product.notesBase.map((n) => (
-                    <p key={n} className="text-xs text-muted-foreground">{n}</p>
-                  ))}
-                </div>
+                {[
+                  { label: "Top", notes: product.notesTop },
+                  { label: "Heart", notes: product.notesMiddle },
+                  { label: "Base", notes: product.notesBase },
+                ].map(({ label, notes }) => (
+                  <div key={label} className="bg-surface rounded-lg p-4">
+                    <p className="text-[10px] tracking-wider uppercase text-primary mb-2">{label}</p>
+                    {notes.map((n) => (
+                      <p key={n} className="text-xs text-muted-foreground">{n}</p>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Specs */}
             <div className="flex gap-6 mb-8">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" />
@@ -107,7 +108,6 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3">
               <Button onClick={handleAddToCart} size="lg" className="flex-1 bg-gradient-gold text-primary-foreground font-semibold hover:opacity-90">
                 <ShoppingBag className="w-4 h-4 mr-2" />
@@ -129,7 +129,6 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <section className="mt-20">
             <h2 className="font-heading text-2xl mb-8">You May Also Like</h2>

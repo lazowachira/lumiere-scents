@@ -1,10 +1,11 @@
 import { Heart } from "lucide-react";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import { useWishlistStore } from "@/store/wishlistStore";
 import ProductCard from "@/components/product/ProductCard";
 
 const Wishlist = () => {
   const ids = useWishlistStore((s) => s.ids);
+  const { data: products = [] } = useProducts();
   const wished = products.filter((p) => ids.includes(p.id));
 
   return (
