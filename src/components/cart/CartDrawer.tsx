@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -5,6 +6,12 @@ import { Button } from "@/components/ui/button";
 
 const CartDrawer = () => {
   const { items, isOpen, setOpen, removeItem, updateQuantity, total, clearCart } = useCartStore();
+  const navigate = useNavigate();
+
+  const handleCheckout = () => {
+    setOpen(false);
+    navigate("/checkout");
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={setOpen}>
@@ -25,11 +32,7 @@ const CartDrawer = () => {
             <div className="flex-1 overflow-y-auto space-y-4 mt-4">
               {items.map((item) => (
                 <div key={item.product.id} className="flex gap-3 p-3 bg-surface rounded-lg">
-                  <img
-                    src={item.product.image}
-                    alt={item.product.name}
-                    className="w-16 h-20 object-cover rounded"
-                  />
+                  <img src={item.product.image} alt={item.product.name} className="w-16 h-20 object-cover rounded" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground">{item.product.brand}</p>
                     <p className="text-sm font-medium truncate">{item.product.name}</p>
@@ -61,7 +64,7 @@ const CartDrawer = () => {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-semibold text-primary">${total().toFixed(2)}</span>
               </div>
-              <Button className="w-full bg-gradient-gold text-primary-foreground font-semibold hover:opacity-90">
+              <Button onClick={handleCheckout} className="w-full bg-gradient-gold text-primary-foreground font-semibold hover:opacity-90">
                 Checkout
               </Button>
               <button onClick={clearCart} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
