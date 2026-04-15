@@ -13,6 +13,7 @@ import ProductDetail from "./pages/ProductDetail";
 import Recommendations from "./pages/Recommendations";
 import Wishlist from "./pages/Wishlist";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import Admin from "./pages/Admin";
