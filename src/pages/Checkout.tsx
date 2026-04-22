@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, CheckCircle } from "lucide-react";
+import { formatPrice } from "@/lib/currency";
 
 const Checkout = () => {
   const { user, loading } = useAuth();
@@ -14,14 +14,13 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [form, setForm] = useState({
     name: "", address: "", city: "", postalCode: "", country: "",
   });
 
   if (loading) return null;
   if (!user) return <Navigate to="/auth?redirect=/checkout" replace />;
-  if (items.length === 0 && !success) return <Navigate to="/products" replace />;
+  if (items.length === 0) return <Navigate to="/products" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,24 +63,9 @@ const Checkout = () => {
     }
 
     clearCart();
-    setSuccess(true);
     setSubmitting(false);
+    navigate(`/order-confirmation/${order.id}`, { replace: true });
   };
-
-  if (success) {
-    return (
-      <div className="min-h-screen pt-24 pb-20 flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <CheckCircle className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h1 className="font-heading text-4xl mb-2">Order Placed!</h1>
-          <p className="text-muted-foreground mb-6">Thank you for shopping with Lumière.</p>
-          <Button onClick={() => navigate("/orders")} className="bg-gradient-gold text-primary-foreground">
-            View Orders
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen pt-24 pb-20">
@@ -112,7 +96,7 @@ const Checkout = () => {
               disabled={submitting}
               className="w-full bg-gradient-gold text-primary-foreground font-semibold hover:opacity-90"
             >
-              {submitting ? "Placing Order..." : `Place Order — $${total().toFixed(2)}`}
+              {submitting ? "Placing Order..." : `Place Order — ${formatPrice(total())}`}
             </Button>
           </form>
 
@@ -122,12 +106,12 @@ const Checkout = () => {
               {items.map((item) => (
                 <div key={item.product.id} className="flex justify-between text-sm">
                   <span>{item.product.name} × {item.quantity}</span>
-                  <span className="text-primary">${(item.product.price * item.quantity).toFixed(2)}</span>
+                  <span className="text-primary">{formatPrice(item.product.price * item.quantity)}</span>
                 </div>
               ))}
               <div className="border-t border-gold/10 pt-3 flex justify-between font-semibold">
                 <span>Total</span>
-                <span className="text-primary">${total().toFixed(2)}</span>
+                <span className="text-primary">{formatPrice(total())}</span>
               </div>
             </div>
           </div>
