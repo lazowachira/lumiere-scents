@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,15 +8,24 @@ import { useToast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const { user, loading, signIn, signUp } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const redirectTo = new URLSearchParams(location.search).get("redirect") || "/";
+
+  useEffect(() => {
+    if (location.hash.includes("type=recovery")) {
+      navigate(`/reset-password${location.hash}`, { replace: true });
+    }
+  }, [location.hash, navigate]);
 
   if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={redirectTo} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +53,8 @@ const Auth = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else if (mode === "signup") {
       toast({ title: "Account created!", description: "Please check your email to verify your account." });
+    } else {
+      navigate(redirectTo, { replace: true });
     }
   };
 
