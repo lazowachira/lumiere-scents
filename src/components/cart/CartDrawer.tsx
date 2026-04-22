@@ -1,16 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 const CartDrawer = () => {
   const { items, isOpen, setOpen, removeItem, updateQuantity, total, clearCart } = useCartStore();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleCheckout = () => {
     setOpen(false);
-    navigate("/checkout");
+    navigate(user ? "/checkout" : "/auth?redirect=/checkout");
   };
 
   return (
@@ -65,7 +67,7 @@ const CartDrawer = () => {
                 <span className="font-semibold text-primary">${total().toFixed(2)}</span>
               </div>
               <Button onClick={handleCheckout} className="w-full bg-gradient-gold text-primary-foreground font-semibold hover:opacity-90">
-                Checkout
+                {user ? "Checkout" : "Sign in to Checkout"}
               </Button>
               <button onClick={clearCart} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
                 Clear Cart
