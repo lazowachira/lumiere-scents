@@ -20,7 +20,7 @@ const Checkout = () => {
   });
 
   if (loading) return null;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) return <Navigate to="/auth?redirect=/checkout" replace />;
   if (items.length === 0 && !success) return <Navigate to="/products" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
