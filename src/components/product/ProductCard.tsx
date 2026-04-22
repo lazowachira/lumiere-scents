@@ -3,6 +3,7 @@ import { Heart, ShoppingBag } from "lucide-react";
 import { Product } from "@/types/product";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
+import { formatPrice } from "@/lib/currency";
 
 interface ProductCardProps {
   product: Product;
@@ -62,9 +63,9 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
           <h3 className="font-heading text-sm hover:text-primary transition-colors">{product.name}</h3>
         </Link>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-primary">${product.price}</span>
+          <span className="text-sm font-semibold text-primary">{formatPrice(product.price)}</span>
           {product.originalPrice && (
-            <span className="text-xs text-muted-foreground line-through">${product.originalPrice}</span>
+            <span className="text-xs text-muted-foreground line-through">{formatPrice(product.originalPrice)}</span>
           )}
         </div>
       </div>
