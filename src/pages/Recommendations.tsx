@@ -31,7 +31,9 @@ const budgetOptions = [
   { label: "KSh 15,000 – 25,000", min: 15000, max: 25000 },
   { label: "KSh 25,000 – 35,000", min: 25000, max: 35000 },
   { label: "Over KSh 35,000", min: 35000, max: Infinity },
-];
+] as const;
+
+type BudgetOption = typeof budgetOptions[number];
 
 const occasionMap: Record<string, string[]> = {
   "Sunday brunch": ["casual"],
