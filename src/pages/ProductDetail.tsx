@@ -5,6 +5,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/product/ProductCard";
+import { formatPrice } from "@/lib/currency";
 
 const ProductDetail = () => {
   const { id } = useParams();
