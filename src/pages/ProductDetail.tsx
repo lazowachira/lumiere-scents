@@ -1,11 +1,13 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Heart, ShoppingBag, Star, Clock, Wind } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingBag, Star, Clock, Wind, AlertTriangle } from "lucide-react";
 import { useProduct, useProducts } from "@/hooks/useProducts";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/product/ProductCard";
 import { formatPrice } from "@/lib/currency";
+import { validateProductImages, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -15,6 +17,19 @@ const ProductDetail = () => {
   const setCartOpen = useCartStore((s) => s.setOpen);
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const isWished = useWishlistStore((s) => s.ids.includes(id || ""));
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setSelectedImage(0);
+    setImageErrors(new Set());
+  }, [id]);
+
+  useEffect(() => {
+    if (product) {
+      validateProductImages(product.name, product.images);
+    }
+  }, [product]);
 
   if (isLoading) {
     return (
@@ -41,6 +56,15 @@ const ProductDetail = () => {
     setCartOpen(true);
   };
 
+  const handleImageError = (index: number) => {
+    setImageErrors((prev) => new Set(prev).add(index));
+  };
+
+  const galleryImages = product.images.length > 0 ? product.images : [product.image];
+  const currentImage = imageErrors.has(selectedImage)
+    ? PLACEHOLDER_IMAGE
+    : galleryImages[selectedImage] || product.image;
+
   return (
     <div className="min-h-screen pt-20 pb-20">
       <div className="container mx-auto px-4">
@@ -49,8 +73,49 @@ const ProductDetail = () => {
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-          <div className="relative rounded-2xl overflow-hidden bg-surface aspect-[3/4] animate-fade-in">
-            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+          {/* Image Gallery */}
+          <div className="space-y-4 animate-fade-in">
+            <div className="relative rounded-2xl overflow-hidden bg-surface aspect-[3/4]">
+              <img
+                src={currentImage}
+                alt={`${product.name} - View ${selectedImage + 1}`}
+                className="w-full h-full object-cover transition-opacity duration-300"
+                onError={() => handleImageError(selectedImage)}
+              />
+              {imageErrors.has(selectedImage) && (
+                <div className="absolute inset-0 flex items-center justify-center bg-surface/80">
+                  <div className="text-center text-muted-foreground">
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-destructive" />
+                    <p className="text-xs">Image unavailable</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {galleryImages.length > 1 && (
+              <div className="flex gap-3">
+                {galleryImages.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImage(i)}
+                    className={`relative rounded-lg overflow-hidden w-20 h-20 border-2 transition-all ${
+                      selectedImage === i
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-transparent hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    <img
+                      src={imageErrors.has(i) ? PLACEHOLDER_IMAGE : img}
+                      alt={`${product.name} thumbnail ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={() => handleImageError(i)}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
