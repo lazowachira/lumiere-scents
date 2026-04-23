@@ -52,7 +52,7 @@ const Recommendations = () => {
   const [climate, setClimate] = useState<string | null>(null);
   const [occasions, setOccasions] = useState<string[]>([]);
   const [personalities, setPersonalities] = useState<string[]>([]);
-  const [budget, setBudget] = useState<{ min: number; max: number } | null>(null);
+  const [budget, setBudget] = useState<BudgetOption | null>(null);
   const [results, setResults] = useState<Product[] | null>(null);
 
   const toggleOption = (list: string[], setter: (v: string[]) => void, value: string) => {
