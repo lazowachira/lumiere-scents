@@ -66,9 +66,9 @@ const ProductDetail = () => {
             </div>
 
             <div className="flex items-baseline gap-3 mb-8">
-              <span className="text-3xl font-heading text-gradient-gold">${product.price}</span>
+              <span className="text-3xl font-heading text-gradient-gold">{formatPrice(product.price)}</span>
               {product.originalPrice && (
-                <span className="text-lg text-muted-foreground line-through">${product.originalPrice}</span>
+                <span className="text-lg text-muted-foreground line-through">{formatPrice(product.originalPrice)}</span>
               )}
             </div>
 
