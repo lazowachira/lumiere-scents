@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
+import { formatPrice } from "@/lib/currency";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ const CartDrawer = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground">{item.product.brand}</p>
                     <p className="text-sm font-medium truncate">{item.product.name}</p>
-                    <p className="text-sm text-primary font-semibold mt-1">${item.product.price}</p>
+                    <p className="text-sm text-primary font-semibold mt-1">{formatPrice(item.product.price)}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
@@ -64,7 +65,7 @@ const CartDrawer = () => {
             <div className="border-t border-gold/10 pt-4 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-semibold text-primary">${total().toFixed(2)}</span>
+                <span className="font-semibold text-primary">{formatPrice(total())}</span>
               </div>
               <Button onClick={handleCheckout} className="w-full bg-gradient-gold text-primary-foreground font-semibold hover:opacity-90">
                 {user ? "Checkout" : "Sign in to Checkout"}
