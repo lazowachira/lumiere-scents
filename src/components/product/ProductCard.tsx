@@ -1,9 +1,11 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Heart, ShoppingBag } from "lucide-react";
 import { Product } from "@/types/product";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { formatPrice } from "@/lib/currency";
+import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
 
 interface ProductCardProps {
   product: Product;
@@ -14,6 +16,11 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const isWished = useWishlistStore((s) => s.ids.includes(product.id));
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    validateProductImage(product.name, product.image);
+  }, [product.name, product.image]);
 
   return (
     <div
@@ -23,10 +30,11 @@ const ProductCard = ({ product, index = 0 }: ProductCardProps) => {
       <Link to={`/products/${product.id}`} className="block">
         <div className="relative overflow-hidden rounded-lg bg-surface aspect-[3/4]">
           <img
-            src={product.image}
+            src={imgError ? PLACEHOLDER_IMAGE : product.image}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             loading="lazy"
+            onError={() => setImgError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           {product.isNewArrival && (
