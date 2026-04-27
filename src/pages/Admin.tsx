@@ -1,13 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon } from "lucide-react";
+import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2 } from "lucide-react";
+import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
+
+interface FlaggedImage {
+  url: string;
+  reason: "missing" | "mismatch";
+  field: "image" | "images";
+  index?: number;
+}
+
+interface FlaggedProduct {
+  id: string;
+  name: string;
+  brand: string;
+  primaryImage: string;
+  flagged: FlaggedImage[];
+}
+
+const auditProduct = (p: any): FlaggedProduct | null => {
+  const flagged: FlaggedImage[] = [];
+
+  if (!p.image || !String(p.image).trim()) {
+    flagged.push({ url: "", reason: "missing", field: "image" });
+  } else if (!validateProductImage(p.name, p.image)) {
+    flagged.push({ url: p.image, reason: "mismatch", field: "image" });
+  }
+
+  const images: string[] = Array.isArray(p.images) ? p.images : [];
+  images.forEach((url, i) => {
+    if (!url || !String(url).trim()) {
+      flagged.push({ url: "", reason: "missing", field: "images", index: i });
+    } else if (!validateProductImage(p.name, url)) {
+      flagged.push({ url, reason: "mismatch", field: "images", index: i });
+    }
+  });
+
+  if (flagged.length === 0) return null;
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    primaryImage: p.image || PLACEHOLDER_IMAGE,
+    flagged,
+  };
+};
 
 const Admin = () => {
   const { user, loading, isAdmin } = useAuth();
@@ -17,10 +62,42 @@ const Admin = () => {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [fixedKeys, setFixedKeys] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const saved = localStorage.getItem("admin:image-audit:fixed");
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [form, setForm] = useState({
     name: "", brand: "", price: "", category: "luxury", gender: "unisex",
     description: "", image: "", scent_family: "woody", stock: "0",
   });
+
+  const flaggedProducts = useMemo(
+    () => products.map(auditProduct).filter((p): p is FlaggedProduct => p !== null),
+    [products]
+  );
+  const totalFlagged = flaggedProducts.reduce((sum, p) => sum + p.flagged.length, 0);
+  const fixedCount = Array.from(fixedKeys).filter((k) =>
+    flaggedProducts.some((p) => p.flagged.some((f) => `${p.id}:${f.field}:${f.index ?? "main"}` === k))
+  ).length;
+
+  const toggleFixed = (key: string) => {
+    setFixedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        localStorage.setItem("admin:image-audit:fixed", JSON.stringify(Array.from(next)));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const pendingOrders = orders.filter((order) => order.status === "pending").length;
@@ -161,6 +238,14 @@ const Admin = () => {
             <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <ShoppingBag className="w-4 h-4 mr-2" /> Orders
             </TabsTrigger>
+            <TabsTrigger value="image-audit" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <ImageOff className="w-4 h-4 mr-2" /> Image Audit
+              {totalFlagged > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive/20 text-destructive text-[10px] px-1.5 py-0.5">
+                  {totalFlagged}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
@@ -289,6 +374,117 @@ const Admin = () => {
                 {filteredOrders.length === 0 && (
                   <p className="text-sm text-muted-foreground">No orders match the selected status.</p>
                 )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="image-audit">
+            <div className="bg-surface rounded-lg p-6 border border-border mb-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-heading text-xl mb-1">Product Image Audit</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Lists products whose primary or gallery image URLs are missing or do not match the product label slug.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-heading text-2xl text-foreground">
+                    {fixedCount}<span className="text-muted-foreground text-base">/{totalFlagged}</span>
+                  </p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">Fixed</p>
+                </div>
+              </div>
+            </div>
+
+            {flaggedProducts.length === 0 ? (
+              <div className="bg-surface rounded-lg p-10 text-center border border-border">
+                <CheckCircle2 className="w-10 h-10 mx-auto text-primary mb-3" />
+                <p className="font-heading text-lg">All product images look good</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  No missing or mismatched image URLs detected across the catalog.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {flaggedProducts.map((p) => {
+                  const allFixed = p.flagged.every((f) =>
+                    fixedKeys.has(`${p.id}:${f.field}:${f.index ?? "main"}`)
+                  );
+                  return (
+                    <div
+                      key={p.id}
+                      className={`bg-surface rounded-lg p-5 border ${allFixed ? "border-primary/40" : "border-destructive/30"}`}
+                    >
+                      <div className="flex items-start gap-4 mb-4">
+                        <img
+                          src={p.primaryImage || PLACEHOLDER_IMAGE}
+                          alt={p.name}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
+                          className="w-14 h-20 rounded object-cover bg-card"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-heading text-lg truncate">{p.name}</p>
+                            {allFixed && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {p.brand} · {p.flagged.length} issue{p.flagged.length === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(products.find((prod) => prod.id === p.id))}
+                          className="border-gold/10"
+                        >
+                          <Edit className="w-3 h-3 mr-1" /> Fix in editor
+                        </Button>
+                      </div>
+
+                      <ul className="space-y-2">
+                        {p.flagged.map((f) => {
+                          const key = `${p.id}:${f.field}:${f.index ?? "main"}`;
+                          const isFixed = fixedKeys.has(key);
+                          return (
+                            <li
+                              key={key}
+                              className="flex items-start gap-3 p-3 rounded bg-card/50 border border-border"
+                            >
+                              <Checkbox
+                                checked={isFixed}
+                                onCheckedChange={() => toggleFixed(key)}
+                                className="mt-0.5"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                                    {f.field === "image" ? "Primary image" : `Gallery image #${(f.index ?? 0) + 1}`}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                      f.reason === "missing"
+                                        ? "bg-destructive/20 text-destructive"
+                                        : "bg-primary/20 text-primary"
+                                    }`}
+                                  >
+                                    {f.reason === "missing" ? "Missing URL" : "Slug mismatch"}
+                                  </span>
+                                </div>
+                                <p
+                                  className={`text-xs mt-1 break-all ${
+                                    isFixed ? "line-through text-muted-foreground" : "text-foreground/80"
+                                  }`}
+                                >
+                                  {f.url || "— (no URL set)"}
+                                </p>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
