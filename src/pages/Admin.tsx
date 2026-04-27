@@ -659,6 +659,27 @@ const Admin = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="mt-5 pt-5 border-t border-border flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  <Filter className="w-3.5 h-3.5" /> Filter
+                </div>
+                <Select value={auditFilter} onValueChange={(v) => setAuditFilter(v as typeof auditFilter)}>
+                  <SelectTrigger className="w-[200px] bg-card border-gold/10 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-gold/10">
+                    <SelectItem value="all">All issues</SelectItem>
+                    <SelectItem value="mismatch">Slug mismatches only</SelectItem>
+                    <SelectItem value="missing">Missing URLs only</SelectItem>
+                    <SelectItem value="open">Open (not yet fixed)</SelectItem>
+                    <SelectItem value="fixed">Marked fixed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">
+                  Showing {filteredCount} of {totalFlagged} issue{totalFlagged === 1 ? "" : "s"}
+                </span>
+              </div>
             </div>
 
             {flaggedProducts.length === 0 ? (
@@ -667,6 +688,14 @@ const Admin = () => {
                 <p className="font-heading text-lg">All product images look good</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   No missing or mismatched image URLs detected across the catalog.
+                </p>
+              </div>
+            ) : filteredFlaggedProducts.length === 0 ? (
+              <div className="bg-surface rounded-lg p-10 text-center border border-border">
+                <Filter className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                <p className="font-heading text-lg">No issues match this filter</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try selecting a different filter to see more results.
                 </p>
               </div>
             ) : (
