@@ -182,6 +182,8 @@ const Admin = () => {
     doc.save(`image-audit-${new Date().toISOString().slice(0, 10)}.pdf`);
     toast({ title: "PDF exported", description: `${rows.length} issue(s) downloaded.` });
   };
+
+  const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const pendingOrders = orders.filter((order) => order.status === "pending").length;
   const lowStockProducts = products.filter((product) => Number(product.stock || 0) <= 10).length;
   const productsWithImages = products.filter((product) => typeof product.image === "string" && product.image.trim().length > 0).length;
