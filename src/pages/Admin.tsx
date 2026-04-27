@@ -313,6 +313,46 @@ const Admin = () => {
     setProducts(data || []);
   };
 
+  const submitFix = async () => {
+    if (!fixDialog) return;
+    const trimmed = fixUrl.trim();
+    if (!trimmed) {
+      toast({ title: "URL required", description: "Paste a valid image URL.", variant: "destructive" });
+      return;
+    }
+    setFixing(true);
+
+    const updatePayload: Record<string, any> = {};
+    if (fixDialog.field === "image") {
+      updatePayload.image = trimmed;
+    } else {
+      const product = products.find((p) => p.id === fixDialog.productId);
+      const current: string[] = Array.isArray(product?.images) ? [...product.images] : [];
+      const idx = fixDialog.index ?? 0;
+      while (current.length <= idx) current.push("");
+      current[idx] = trimmed;
+      updatePayload.images = current;
+    }
+
+    const { error } = await supabase.from("products").update(updatePayload).eq("id", fixDialog.productId);
+    setFixing(false);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setFixedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(fixDialog.key);
+      try { localStorage.setItem("admin:image-audit:fixed", JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+    toast({ title: "Image updated", description: `${fixDialog.productName} saved with new URL.` });
+    setFixDialog(null);
+    setFixUrl("");
+    fetchProducts();
+  };
+
   const fetchOrders = async () => {
     const { data } = await supabase
       .from("orders")
