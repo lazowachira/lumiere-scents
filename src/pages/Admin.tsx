@@ -1,13 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon } from "lucide-react";
+import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2 } from "lucide-react";
+import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
+
+interface FlaggedImage {
+  url: string;
+  reason: "missing" | "mismatch";
+  field: "image" | "images";
+  index?: number;
+}
+
+interface FlaggedProduct {
+  id: string;
+  name: string;
+  brand: string;
+  primaryImage: string;
+  flagged: FlaggedImage[];
+}
+
+const auditProduct = (p: any): FlaggedProduct | null => {
+  const flagged: FlaggedImage[] = [];
+
+  if (!p.image || !String(p.image).trim()) {
+    flagged.push({ url: "", reason: "missing", field: "image" });
+  } else if (!validateProductImage(p.name, p.image)) {
+    flagged.push({ url: p.image, reason: "mismatch", field: "image" });
+  }
+
+  const images: string[] = Array.isArray(p.images) ? p.images : [];
+  images.forEach((url, i) => {
+    if (!url || !String(url).trim()) {
+      flagged.push({ url: "", reason: "missing", field: "images", index: i });
+    } else if (!validateProductImage(p.name, url)) {
+      flagged.push({ url, reason: "mismatch", field: "images", index: i });
+    }
+  });
+
+  if (flagged.length === 0) return null;
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    primaryImage: p.image || PLACEHOLDER_IMAGE,
+    flagged,
+  };
+};
 
 const Admin = () => {
   const { user, loading, isAdmin } = useAuth();
