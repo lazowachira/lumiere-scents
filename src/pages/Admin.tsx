@@ -8,7 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2 } from "lucide-react";
+import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2, Download, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
 
 interface FlaggedImage {
