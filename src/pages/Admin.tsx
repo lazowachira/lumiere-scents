@@ -700,7 +700,7 @@ const Admin = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {flaggedProducts.map((p) => {
+                {filteredFlaggedProducts.map((p) => {
                   const allFixed = p.flagged.every((f) =>
                     fixedKeys.has(`${p.id}:${f.field}:${f.index ?? "main"}`)
                   );
