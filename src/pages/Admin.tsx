@@ -322,7 +322,7 @@ const Admin = () => {
     }
     setFixing(true);
 
-    const updatePayload: Record<string, any> = {};
+    const updatePayload: { image?: string; images?: string[] } = {};
     if (fixDialog.field === "image") {
       updatePayload.image = trimmed;
     } else {
