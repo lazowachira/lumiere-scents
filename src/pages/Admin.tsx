@@ -62,10 +62,42 @@ const Admin = () => {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [fixedKeys, setFixedKeys] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const saved = localStorage.getItem("admin:image-audit:fixed");
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [form, setForm] = useState({
     name: "", brand: "", price: "", category: "luxury", gender: "unisex",
     description: "", image: "", scent_family: "woody", stock: "0",
   });
+
+  const flaggedProducts = useMemo(
+    () => products.map(auditProduct).filter((p): p is FlaggedProduct => p !== null),
+    [products]
+  );
+  const totalFlagged = flaggedProducts.reduce((sum, p) => sum + p.flagged.length, 0);
+  const fixedCount = Array.from(fixedKeys).filter((k) =>
+    flaggedProducts.some((p) => p.flagged.some((f) => `${p.id}:${f.field}:${f.index ?? "main"}` === k))
+  ).length;
+
+  const toggleFixed = (key: string) => {
+    setFixedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        localStorage.setItem("admin:image-audit:fixed", JSON.stringify(Array.from(next)));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
   const pendingOrders = orders.filter((order) => order.status === "pending").length;
