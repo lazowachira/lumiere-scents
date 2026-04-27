@@ -148,7 +148,7 @@ const Admin = () => {
   };
 
   const buildAuditRows = () =>
-    flaggedProducts.flatMap((p) =>
+    filteredFlaggedProducts.flatMap((p) =>
       p.flagged.map((f) => {
         const key = `${p.id}:${f.field}:${f.index ?? "main"}`;
         return {
