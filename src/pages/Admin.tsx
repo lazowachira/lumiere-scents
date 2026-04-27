@@ -77,12 +77,46 @@ const Admin = () => {
     name: "", brand: "", price: "", category: "luxury", gender: "unisex",
     description: "", image: "", scent_family: "woody", stock: "0",
   });
+  const [auditFilter, setAuditFilter] = useState<"all" | "missing" | "mismatch" | "open" | "fixed">("all");
+  const [fixDialog, setFixDialog] = useState<null | {
+    productId: string;
+    productName: string;
+    field: "image" | "images";
+    index?: number;
+    currentUrl: string;
+    key: string;
+  }>(null);
+  const [fixUrl, setFixUrl] = useState("");
+  const [fixing, setFixing] = useState(false);
 
   const flaggedProducts = useMemo(
     () => products.map(auditProduct).filter((p): p is FlaggedProduct => p !== null),
     [products]
   );
+
+  const filteredFlaggedProducts = useMemo(() => {
+    const matches = (reason: "missing" | "mismatch", key: string) => {
+      const isFixed = fixedKeys.has(key);
+      switch (auditFilter) {
+        case "missing": return reason === "missing";
+        case "mismatch": return reason === "mismatch";
+        case "fixed": return isFixed;
+        case "open": return !isFixed;
+        default: return true;
+      }
+    };
+    return flaggedProducts
+      .map((p) => ({
+        ...p,
+        flagged: p.flagged.filter((f) =>
+          matches(f.reason, `${p.id}:${f.field}:${f.index ?? "main"}`)
+        ),
+      }))
+      .filter((p) => p.flagged.length > 0);
+  }, [flaggedProducts, fixedKeys, auditFilter]);
+
   const totalFlagged = flaggedProducts.reduce((sum, p) => sum + p.flagged.length, 0);
+  const filteredCount = filteredFlaggedProducts.reduce((sum, p) => sum + p.flagged.length, 0);
   const fixedCount = Array.from(fixedKeys).filter((k) =>
     flaggedProducts.some((p) => p.flagged.some((f) => `${p.id}:${f.field}:${f.index ?? "main"}` === k))
   ).length;
@@ -99,6 +133,18 @@ const Admin = () => {
       }
       return next;
     });
+  };
+
+  const openFixDialog = (
+    productId: string,
+    productName: string,
+    field: "image" | "images",
+    index: number | undefined,
+    currentUrl: string
+  ) => {
+    const key = `${productId}:${field}:${index ?? "main"}`;
+    setFixDialog({ productId, productName, field, index, currentUrl, key });
+    setFixUrl(currentUrl);
   };
 
   const buildAuditRows = () =>
