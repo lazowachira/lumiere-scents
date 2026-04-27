@@ -101,7 +101,87 @@ const Admin = () => {
     });
   };
 
-  const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+  const buildAuditRows = () =>
+    flaggedProducts.flatMap((p) =>
+      p.flagged.map((f) => {
+        const key = `${p.id}:${f.field}:${f.index ?? "main"}`;
+        return {
+          product: p.name,
+          brand: p.brand,
+          field: f.field === "image" ? "Primary" : `Gallery #${(f.index ?? 0) + 1}`,
+          issue: f.reason === "missing" ? "Missing URL" : "Slug mismatch",
+          url: f.url || "(none)",
+          status: fixedKeys.has(key) ? "Fixed" : "Open",
+        };
+      })
+    );
+
+  const exportCSV = () => {
+    const rows = buildAuditRows();
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "No flagged image issues to report." });
+      return;
+    }
+    const headers = ["Product", "Brand", "Field", "Issue", "URL", "Status"];
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => [r.product, r.brand, r.field, r.issue, r.url, r.status].map(escape).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `image-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV exported", description: `${rows.length} issue(s) downloaded.` });
+  };
+
+  const exportPDF = () => {
+    const rows = buildAuditRows();
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "No flagged image issues to report." });
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Product Image Audit Report", 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(
+      `Generated ${new Date().toLocaleString()} · ${fixedCount}/${totalFlagged} fixed`,
+      14,
+      25
+    );
+
+    autoTable(doc, {
+      startY: 32,
+      head: [["Product", "Brand", "Field", "Issue", "Status", "URL"]],
+      body: rows.map((r) => [r.product, r.brand, r.field, r.issue, r.status, r.url]),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      headStyles: { fillColor: [30, 30, 30], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: "auto" },
+      },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 4) {
+          data.cell.styles.textColor =
+            data.cell.raw === "Fixed" ? [22, 128, 80] : [200, 60, 60];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    doc.save(`image-audit-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast({ title: "PDF exported", description: `${rows.length} issue(s) downloaded.` });
+  };
   const pendingOrders = orders.filter((order) => order.status === "pending").length;
   const lowStockProducts = products.filter((product) => Number(product.stock || 0) <= 10).length;
   const productsWithImages = products.filter((product) => typeof product.image === "string" && product.image.trim().length > 0).length;
