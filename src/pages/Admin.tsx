@@ -8,7 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2 } from "lucide-react";
+import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2, Download, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
 
 interface FlaggedImage {
@@ -97,6 +99,88 @@ const Admin = () => {
       }
       return next;
     });
+  };
+
+  const buildAuditRows = () =>
+    flaggedProducts.flatMap((p) =>
+      p.flagged.map((f) => {
+        const key = `${p.id}:${f.field}:${f.index ?? "main"}`;
+        return {
+          product: p.name,
+          brand: p.brand,
+          field: f.field === "image" ? "Primary" : `Gallery #${(f.index ?? 0) + 1}`,
+          issue: f.reason === "missing" ? "Missing URL" : "Slug mismatch",
+          url: f.url || "(none)",
+          status: fixedKeys.has(key) ? "Fixed" : "Open",
+        };
+      })
+    );
+
+  const exportCSV = () => {
+    const rows = buildAuditRows();
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "No flagged image issues to report." });
+      return;
+    }
+    const headers = ["Product", "Brand", "Field", "Issue", "URL", "Status"];
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => [r.product, r.brand, r.field, r.issue, r.url, r.status].map(escape).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `image-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV exported", description: `${rows.length} issue(s) downloaded.` });
+  };
+
+  const exportPDF = () => {
+    const rows = buildAuditRows();
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "No flagged image issues to report." });
+      return;
+    }
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Product Image Audit Report", 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(
+      `Generated ${new Date().toLocaleString()} · ${fixedCount}/${totalFlagged} fixed`,
+      14,
+      25
+    );
+
+    autoTable(doc, {
+      startY: 32,
+      head: [["Product", "Brand", "Field", "Issue", "Status", "URL"]],
+      body: rows.map((r) => [r.product, r.brand, r.field, r.issue, r.status, r.url]),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      headStyles: { fillColor: [30, 30, 30], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: "auto" },
+      },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 4) {
+          data.cell.styles.textColor =
+            data.cell.raw === "Fixed" ? [22, 128, 80] : [200, 60, 60];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    doc.save(`image-audit-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast({ title: "PDF exported", description: `${rows.length} issue(s) downloaded.` });
   };
 
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
@@ -387,11 +471,33 @@ const Admin = () => {
                     Lists products whose primary or gallery image URLs are missing or do not match the product label slug.
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-heading text-2xl text-foreground">
-                    {fixedCount}<span className="text-muted-foreground text-base">/{totalFlagged}</span>
-                  </p>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">Fixed</p>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="font-heading text-2xl text-foreground">
+                      {fixedCount}<span className="text-muted-foreground text-base">/{totalFlagged}</span>
+                    </p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">Fixed</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={exportCSV}
+                      disabled={totalFlagged === 0}
+                      className="border-gold/10"
+                    >
+                      <Download className="w-3 h-3 mr-1.5" /> Export CSV
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={exportPDF}
+                      disabled={totalFlagged === 0}
+                      className="border-gold/10"
+                    >
+                      <FileText className="w-3 h-3 mr-1.5" /> Export PDF
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
