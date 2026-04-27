@@ -471,11 +471,33 @@ const Admin = () => {
                     Lists products whose primary or gallery image URLs are missing or do not match the product label slug.
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-heading text-2xl text-foreground">
-                    {fixedCount}<span className="text-muted-foreground text-base">/{totalFlagged}</span>
-                  </p>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">Fixed</p>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="font-heading text-2xl text-foreground">
+                      {fixedCount}<span className="text-muted-foreground text-base">/{totalFlagged}</span>
+                    </p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">Fixed</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={exportCSV}
+                      disabled={totalFlagged === 0}
+                      className="border-gold/10"
+                    >
+                      <Download className="w-3 h-3 mr-1.5" /> Export CSV
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={exportPDF}
+                      disabled={totalFlagged === 0}
+                      className="border-gold/10"
+                    >
+                      <FileText className="w-3 h-3 mr-1.5" /> Export PDF
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
