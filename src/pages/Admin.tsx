@@ -8,7 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2, Download, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Image as ImageIcon, ImageOff, CheckCircle2, Download, FileText, Wrench, Filter } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
@@ -77,12 +79,46 @@ const Admin = () => {
     name: "", brand: "", price: "", category: "luxury", gender: "unisex",
     description: "", image: "", scent_family: "woody", stock: "0",
   });
+  const [auditFilter, setAuditFilter] = useState<"all" | "missing" | "mismatch" | "open" | "fixed">("all");
+  const [fixDialog, setFixDialog] = useState<null | {
+    productId: string;
+    productName: string;
+    field: "image" | "images";
+    index?: number;
+    currentUrl: string;
+    key: string;
+  }>(null);
+  const [fixUrl, setFixUrl] = useState("");
+  const [fixing, setFixing] = useState(false);
 
   const flaggedProducts = useMemo(
     () => products.map(auditProduct).filter((p): p is FlaggedProduct => p !== null),
     [products]
   );
+
+  const filteredFlaggedProducts = useMemo(() => {
+    const matches = (reason: "missing" | "mismatch", key: string) => {
+      const isFixed = fixedKeys.has(key);
+      switch (auditFilter) {
+        case "missing": return reason === "missing";
+        case "mismatch": return reason === "mismatch";
+        case "fixed": return isFixed;
+        case "open": return !isFixed;
+        default: return true;
+      }
+    };
+    return flaggedProducts
+      .map((p) => ({
+        ...p,
+        flagged: p.flagged.filter((f) =>
+          matches(f.reason, `${p.id}:${f.field}:${f.index ?? "main"}`)
+        ),
+      }))
+      .filter((p) => p.flagged.length > 0);
+  }, [flaggedProducts, fixedKeys, auditFilter]);
+
   const totalFlagged = flaggedProducts.reduce((sum, p) => sum + p.flagged.length, 0);
+  const filteredCount = filteredFlaggedProducts.reduce((sum, p) => sum + p.flagged.length, 0);
   const fixedCount = Array.from(fixedKeys).filter((k) =>
     flaggedProducts.some((p) => p.flagged.some((f) => `${p.id}:${f.field}:${f.index ?? "main"}` === k))
   ).length;
@@ -101,8 +137,20 @@ const Admin = () => {
     });
   };
 
+  const openFixDialog = (
+    productId: string,
+    productName: string,
+    field: "image" | "images",
+    index: number | undefined,
+    currentUrl: string
+  ) => {
+    const key = `${productId}:${field}:${index ?? "main"}`;
+    setFixDialog({ productId, productName, field, index, currentUrl, key });
+    setFixUrl(currentUrl);
+  };
+
   const buildAuditRows = () =>
-    flaggedProducts.flatMap((p) =>
+    filteredFlaggedProducts.flatMap((p) =>
       p.flagged.map((f) => {
         const key = `${p.id}:${f.field}:${f.index ?? "main"}`;
         return {
@@ -265,6 +313,46 @@ const Admin = () => {
   const fetchProducts = async () => {
     const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
     setProducts(data || []);
+  };
+
+  const submitFix = async () => {
+    if (!fixDialog) return;
+    const trimmed = fixUrl.trim();
+    if (!trimmed) {
+      toast({ title: "URL required", description: "Paste a valid image URL.", variant: "destructive" });
+      return;
+    }
+    setFixing(true);
+
+    const updatePayload: { image?: string; images?: string[] } = {};
+    if (fixDialog.field === "image") {
+      updatePayload.image = trimmed;
+    } else {
+      const product = products.find((p) => p.id === fixDialog.productId);
+      const current: string[] = Array.isArray(product?.images) ? [...product.images] : [];
+      const idx = fixDialog.index ?? 0;
+      while (current.length <= idx) current.push("");
+      current[idx] = trimmed;
+      updatePayload.images = current;
+    }
+
+    const { error } = await supabase.from("products").update(updatePayload).eq("id", fixDialog.productId);
+    setFixing(false);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setFixedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(fixDialog.key);
+      try { localStorage.setItem("admin:image-audit:fixed", JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+    toast({ title: "Image updated", description: `${fixDialog.productName} saved with new URL.` });
+    setFixDialog(null);
+    setFixUrl("");
+    fetchProducts();
   };
 
   const fetchOrders = async () => {
@@ -571,6 +659,27 @@ const Admin = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="mt-5 pt-5 border-t border-border flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  <Filter className="w-3.5 h-3.5" /> Filter
+                </div>
+                <Select value={auditFilter} onValueChange={(v) => setAuditFilter(v as typeof auditFilter)}>
+                  <SelectTrigger className="w-[200px] bg-card border-gold/10 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-gold/10">
+                    <SelectItem value="all">All issues</SelectItem>
+                    <SelectItem value="mismatch">Slug mismatches only</SelectItem>
+                    <SelectItem value="missing">Missing URLs only</SelectItem>
+                    <SelectItem value="open">Open (not yet fixed)</SelectItem>
+                    <SelectItem value="fixed">Marked fixed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">
+                  Showing {filteredCount} of {totalFlagged} issue{totalFlagged === 1 ? "" : "s"}
+                </span>
+              </div>
             </div>
 
             {flaggedProducts.length === 0 ? (
@@ -581,9 +690,17 @@ const Admin = () => {
                   No missing or mismatched image URLs detected across the catalog.
                 </p>
               </div>
+            ) : filteredFlaggedProducts.length === 0 ? (
+              <div className="bg-surface rounded-lg p-10 text-center border border-border">
+                <Filter className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                <p className="font-heading text-lg">No issues match this filter</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try selecting a different filter to see more results.
+                </p>
+              </div>
             ) : (
               <div className="space-y-4">
-                {flaggedProducts.map((p) => {
+                {filteredFlaggedProducts.map((p) => {
                   const allFixed = p.flagged.every((f) =>
                     fixedKeys.has(`${p.id}:${f.field}:${f.index ?? "main"}`)
                   );
@@ -655,6 +772,14 @@ const Admin = () => {
                                   {f.url || "— (no URL set)"}
                                 </p>
                               </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openFixDialog(p.id, p.name, f.field, f.index, f.url)}
+                                className="border-gold/10 h-8 shrink-0"
+                              >
+                                <Wrench className="w-3 h-3 mr-1" /> Fix
+                              </Button>
                             </li>
                           );
                         })}
@@ -667,6 +792,85 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={!!fixDialog} onOpenChange={(open) => { if (!open) { setFixDialog(null); setFixUrl(""); } }}>
+        <DialogContent className="bg-surface border-gold/10 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Fix image URL</DialogTitle>
+            <DialogDescription>
+              {fixDialog && (
+                <>
+                  Update the {fixDialog.field === "image" ? "primary image" : `gallery image #${(fixDialog.index ?? 0) + 1}`} for{" "}
+                  <span className="text-foreground font-medium">{fixDialog.productName}</span>.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {fixDialog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Current</Label>
+                  <div className="mt-2 aspect-square rounded bg-card border border-border overflow-hidden flex items-center justify-center">
+                    {fixDialog.currentUrl ? (
+                      <img
+                        src={fixDialog.currentUrl}
+                        alt="current"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No URL</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preview</Label>
+                  <div className="mt-2 aspect-square rounded bg-card border border-border overflow-hidden flex items-center justify-center">
+                    {fixUrl ? (
+                      <img
+                        src={fixUrl}
+                        alt="preview"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Paste a URL</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="fix-url" className="text-xs uppercase tracking-wider text-muted-foreground">
+                  New image URL
+                </Label>
+                <Input
+                  id="fix-url"
+                  value={fixUrl}
+                  onChange={(e) => setFixUrl(e.target.value)}
+                  placeholder="https://…/midnight-oud.jpg"
+                  className="mt-2 bg-card border-gold/10"
+                  autoFocus
+                />
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Tip: include the product slug (e.g. “{fixDialog.productName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}”) in the filename so it passes validation.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setFixDialog(null); setFixUrl(""); }} className="border-gold/10">
+              Cancel
+            </Button>
+            <Button onClick={submitFix} disabled={fixing || !fixUrl.trim()} className="bg-gradient-gold text-primary-foreground">
+              {fixing ? "Saving…" : "Save & mark fixed"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
