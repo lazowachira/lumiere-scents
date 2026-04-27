@@ -238,6 +238,14 @@ const Admin = () => {
             <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <ShoppingBag className="w-4 h-4 mr-2" /> Orders
             </TabsTrigger>
+            <TabsTrigger value="image-audit" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <ImageOff className="w-4 h-4 mr-2" /> Image Audit
+              {totalFlagged > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-destructive/20 text-destructive text-[10px] px-1.5 py-0.5">
+                  {totalFlagged}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="products">
