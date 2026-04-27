@@ -792,6 +792,85 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={!!fixDialog} onOpenChange={(open) => { if (!open) { setFixDialog(null); setFixUrl(""); } }}>
+        <DialogContent className="bg-surface border-gold/10 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Fix image URL</DialogTitle>
+            <DialogDescription>
+              {fixDialog && (
+                <>
+                  Update the {fixDialog.field === "image" ? "primary image" : `gallery image #${(fixDialog.index ?? 0) + 1}`} for{" "}
+                  <span className="text-foreground font-medium">{fixDialog.productName}</span>.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {fixDialog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Current</Label>
+                  <div className="mt-2 aspect-square rounded bg-card border border-border overflow-hidden flex items-center justify-center">
+                    {fixDialog.currentUrl ? (
+                      <img
+                        src={fixDialog.currentUrl}
+                        alt="current"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No URL</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preview</Label>
+                  <div className="mt-2 aspect-square rounded bg-card border border-border overflow-hidden flex items-center justify-center">
+                    {fixUrl ? (
+                      <img
+                        src={fixUrl}
+                        alt="preview"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMAGE; }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Paste a URL</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="fix-url" className="text-xs uppercase tracking-wider text-muted-foreground">
+                  New image URL
+                </Label>
+                <Input
+                  id="fix-url"
+                  value={fixUrl}
+                  onChange={(e) => setFixUrl(e.target.value)}
+                  placeholder="https://…/midnight-oud.jpg"
+                  className="mt-2 bg-card border-gold/10"
+                  autoFocus
+                />
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Tip: include the product slug (e.g. “{fixDialog.productName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}”) in the filename so it passes validation.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setFixDialog(null); setFixUrl(""); }} className="border-gold/10">
+              Cancel
+            </Button>
+            <Button onClick={submitFix} disabled={fixing || !fixUrl.trim()} className="bg-gradient-gold text-primary-foreground">
+              {fixing ? "Saving…" : "Save & mark fixed"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
