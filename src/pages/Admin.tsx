@@ -772,6 +772,14 @@ const Admin = () => {
                                   {f.url || "— (no URL set)"}
                                 </p>
                               </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openFixDialog(p.id, p.name, f.field, f.index, f.url)}
+                                className="border-gold/10 h-8 shrink-0"
+                              >
+                                <Wrench className="w-3 h-3 mr-1" /> Fix
+                              </Button>
                             </li>
                           );
                         })}
