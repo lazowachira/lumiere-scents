@@ -106,15 +106,36 @@ const Admin = () => {
       p.flagged.map((f) => {
         const key = `${p.id}:${f.field}:${f.index ?? "main"}`;
         return {
+          productId: p.id,
           product: p.name,
           brand: p.brand,
           field: f.field === "image" ? "Primary" : `Gallery #${(f.index ?? 0) + 1}`,
           issue: f.reason === "missing" ? "Missing URL" : "Slug mismatch",
-          url: f.url || "(none)",
+          url: f.url || "",
+          expectedUrl: p.primaryImage || "",
           status: fixedKeys.has(key) ? "Fixed" : "Open",
         };
       })
     );
+
+  const fetchImageAsDataUrl = async (url: string): Promise<{ data: string; format: "JPEG" | "PNG" } | null> => {
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const format = blob.type.includes("png") ? "PNG" : "JPEG";
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      return { data, format };
+    } catch {
+      return null;
+    }
+  };
 
   const exportCSV = () => {
     const rows = buildAuditRows();
@@ -122,11 +143,15 @@ const Admin = () => {
       toast({ title: "Nothing to export", description: "No flagged image issues to report." });
       return;
     }
-    const headers = ["Product", "Brand", "Field", "Issue", "URL", "Status"];
+    const headers = ["Product", "Brand", "Field", "Issue", "Status", "Flagged Image URL", "Expected Primary URL"];
     const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const csv = [
       headers.join(","),
-      ...rows.map((r) => [r.product, r.brand, r.field, r.issue, r.url, r.status].map(escape).join(",")),
+      ...rows.map((r) =>
+        [r.product, r.brand, r.field, r.issue, r.status, r.url || "(none)", r.expectedUrl || "(none)"]
+          .map(escape)
+          .join(",")
+      ),
     ].join("\n");
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -139,12 +164,24 @@ const Admin = () => {
     toast({ title: "CSV exported", description: `${rows.length} issue(s) downloaded.` });
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
     const rows = buildAuditRows();
     if (rows.length === 0) {
       toast({ title: "Nothing to export", description: "No flagged image issues to report." });
       return;
     }
+
+    toast({ title: "Generating PDF…", description: "Fetching thumbnails for preview." });
+
+    // Pre-fetch unique image URLs once
+    const uniqueUrls = Array.from(new Set(rows.flatMap((r) => [r.url, r.expectedUrl]).filter(Boolean)));
+    const cache = new Map<string, { data: string; format: "JPEG" | "PNG" } | null>();
+    await Promise.all(
+      uniqueUrls.map(async (u) => {
+        cache.set(u, await fetchImageAsDataUrl(u));
+      })
+    );
+
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text("Product Image Audit Report", 14, 18);
@@ -156,31 +193,65 @@ const Admin = () => {
       25
     );
 
+    const THUMB = 18; // mm
+
     autoTable(doc, {
       startY: 32,
-      head: [["Product", "Brand", "Field", "Issue", "Status", "URL"]],
-      body: rows.map((r) => [r.product, r.brand, r.field, r.issue, r.status, r.url]),
-      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak" },
+      head: [["Product", "Field", "Issue", "Status", "Flagged", "Expected"]],
+      body: rows.map((r) => [
+        `${r.product}\n${r.brand}`,
+        r.field,
+        r.issue,
+        r.status,
+        "", // image cell
+        "", // image cell
+      ]),
+      styles: { fontSize: 8, cellPadding: 2, overflow: "linebreak", minCellHeight: THUMB + 2, valign: "middle" },
       headStyles: { fillColor: [30, 30, 30], textColor: 255 },
       columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 25 },
+        0: { cellWidth: 38 },
+        1: { cellWidth: 22 },
         2: { cellWidth: 22 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 18 },
-        5: { cellWidth: "auto" },
+        3: { cellWidth: 18 },
+        4: { cellWidth: 30, halign: "center" },
+        5: { cellWidth: 30, halign: "center" },
       },
       didParseCell: (data) => {
-        if (data.section === "body" && data.column.index === 4) {
+        if (data.section === "body" && data.column.index === 3) {
           data.cell.styles.textColor =
             data.cell.raw === "Fixed" ? [22, 128, 80] : [200, 60, 60];
           data.cell.styles.fontStyle = "bold";
         }
       },
+      didDrawCell: (data) => {
+        if (data.section !== "body") return;
+        const row = rows[data.row.index];
+        if (!row) return;
+        const url = data.column.index === 4 ? row.url : data.column.index === 5 ? row.expectedUrl : null;
+        if (!url) return;
+        const img = cache.get(url);
+        if (!img) {
+          doc.setFontSize(7);
+          doc.setTextColor(160);
+          doc.text("n/a", data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
+            align: "center",
+            baseline: "middle",
+          });
+          doc.setTextColor(0);
+          return;
+        }
+        const x = data.cell.x + (data.cell.width - THUMB) / 2;
+        const y = data.cell.y + (data.cell.height - THUMB) / 2;
+        try {
+          doc.addImage(img.data, img.format, x, y, THUMB, THUMB);
+        } catch {
+          /* skip if image can't be added */
+        }
+      },
     });
 
     doc.save(`image-audit-${new Date().toISOString().slice(0, 10)}.pdf`);
-    toast({ title: "PDF exported", description: `${rows.length} issue(s) downloaded.` });
+    toast({ title: "PDF exported", description: `${rows.length} issue(s) downloaded with thumbnails.` });
   };
 
   const totalRevenue = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
