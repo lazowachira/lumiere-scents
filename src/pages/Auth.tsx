@@ -69,9 +69,9 @@ const Auth = () => {
           </h1>
           <p className="text-sm text-muted-foreground">
             {mode === "login"
-              ? "Sign in to your Lumière account"
+              ? "Sign in to your Lumiere Scents account"
               : mode === "signup"
-              ? "Join Lumière for an exclusive experience"
+              ? "Join Lumiere Scents for an exclusive experience"
               : "Enter your email to receive a reset link"}
           </p>
         </div>

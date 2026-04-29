@@ -6,13 +6,22 @@ import { formatPrice } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Package, ArrowRight, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
+
+type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
+type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+
+interface OrderItemWithProduct extends OrderItemRow {
+  products: Pick<ProductRow, "name" | "brand" | "image"> | null;
+}
 
 const OrderConfirmation = () => {
   const { id } = useParams();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [order, setOrder] = useState<any>(null);
-  const [items, setItems] = useState<any[]>([]);
+  const [order, setOrder] = useState<OrderRow | null>(null);
+  const [items, setItems] = useState<OrderItemWithProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -87,7 +96,7 @@ const OrderConfirmation = () => {
             <span className="text-gradient-gold">Order Confirmed!</span>
           </h1>
           <p className="text-muted-foreground">
-            Thank you for shopping with Lumière. Your order has been placed successfully.
+            Thank you for shopping with Lumiere Scents. Your order has been placed successfully.
           </p>
         </div>
 

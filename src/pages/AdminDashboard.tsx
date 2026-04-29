@@ -14,6 +14,19 @@ import { Trash2, Plus, Package, ShoppingBag, Edit, DollarSign, AlertTriangle, Im
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { validateProductImage, PLACEHOLDER_IMAGE } from "@/lib/imageValidation";
+import type { Database } from "@/integrations/supabase/types";
+
+type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
+
+interface OrderItemWithProduct extends Pick<OrderItemRow, "id" | "quantity" | "price"> {
+  products: Pick<ProductRow, "name"> | null;
+}
+
+interface OrderWithItems extends OrderRow {
+  order_items?: OrderItemWithProduct[] | null;
+}
 
 interface FlaggedImage {
   url: string;
@@ -30,7 +43,7 @@ interface FlaggedProduct {
   flagged: FlaggedImage[];
 }
 
-const auditProduct = (p: any): FlaggedProduct | null => {
+const auditProduct = (p: ProductRow): FlaggedProduct | null => {
   const flagged: FlaggedImage[] = [];
 
   if (!p.image || !String(p.image).trim()) {
@@ -58,11 +71,11 @@ const auditProduct = (p: any): FlaggedProduct | null => {
   };
 };
 
-const Admin = () => {
+const AdminDashboard = () => {
   const { user, loading, isAdmin } = useAuth();
   const { toast } = useToast();
-  const [products, setProducts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -358,7 +371,7 @@ const Admin = () => {
   const fetchOrders = async () => {
     const { data } = await supabase
       .from("orders")
-      .select("*, order_items(quantity, price, products(name))")
+      .select("*, order_items(id, quantity, price, products(name))")
       .order("created_at", { ascending: false });
     setOrders(data || []);
   };
@@ -409,7 +422,8 @@ const Admin = () => {
     fetchProducts();
   };
 
-  const handleEdit = (p: any) => {
+  const handleEdit = (p?: ProductRow) => {
+    if (!p) return;
     setEditId(p.id);
     setForm({
       name: p.name, brand: p.brand, price: String(p.price), category: p.category,
@@ -607,7 +621,7 @@ const Admin = () => {
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {order.order_items?.map((i: any) => (
+                      {order.order_items?.map((i) => (
                         <span key={i.id} className="mr-3">{i.products?.name} ×{i.quantity}</span>
                       ))}
                     </div>
@@ -875,4 +889,4 @@ const Admin = () => {
   );
 };
 
-export default Admin;
+export default AdminDashboard;

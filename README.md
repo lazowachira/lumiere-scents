@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Lumiere Scents
 
-TODO: Document your project here
+Luxury perfume collection storefront.

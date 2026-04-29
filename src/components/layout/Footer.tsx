@@ -35,7 +35,7 @@ const Footer = () => (
         </div>
       </div>
       <div className="border-t border-gold/10 mt-12 pt-8 text-center text-xs text-muted-foreground">
-        © 2026 Lumière. All rights reserved.
+        © 2026 Lumiere Scents. All rights reserved.
       </div>
     </div>
   </footer>
